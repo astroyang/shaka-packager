@@ -24,6 +24,7 @@ namespace webm {
 namespace {
 int64_t kTimecodeScale = 1000000;
 int64_t kSecondsToNs = 1000000000L;
+double kEpsilon = 0.00001;
 }  // namespace
 
 Segmenter::Segmenter(const MuxerOptions& options)
@@ -131,7 +132,7 @@ Status Segmenter::AddSample(scoped_refptr<MediaSample> sample) {
     status = NewSegment(sample->pts());
     // First frame, so no previous frame to write.
     wrote_frame = true;
-  } else if (segment_length_sec_ >= options_.segment_duration) {
+  } else if (segment_length_sec_ - options_.segment_duration >= -kEpsilon) {
     if (sample->is_key_frame() || !options_.segment_sap_aligned) {
       status = WriteFrame(true /* write_duration */);
       status.Update(NewSegment(sample->pts()));
@@ -139,7 +140,7 @@ Status Segmenter::AddSample(scoped_refptr<MediaSample> sample) {
       cluster_length_sec_ = 0;
       wrote_frame = true;
     }
-  } else if (cluster_length_sec_ >= options_.fragment_duration) {
+  } else if (cluster_length_sec_ - options_.fragment_duration >= -kEpsilon) {
     if (sample->is_key_frame() || !options_.fragment_sap_aligned) {
       status = WriteFrame(true /* write_duration */);
       status.Update(NewSubsegment(sample->pts()));
